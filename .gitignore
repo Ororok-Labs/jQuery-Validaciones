@@ -1,0 +1,39 @@
+# 🚫 Node modules y lock
+node_modules/
+package-lock.json
+
+# 🛠️ Archivos de build
+dist/
+build/
+*.log
+
+# 🧪 Cache y artefactos temporales
+.vite/
+.cache/
+*.tmp
+*.temp
+*.bak
+
+# 🧪 Coverage
+coverage/
+
+# 📁 Ediciones y entornos locales
+.idea/
+.vscode/
+
+# 💻 SO específicos
+.DS_Store
+Thumbs.db
+
+# 🚀 Archivos generados por Vite o bundlers
+*.local
+*.env.local
+.env.*
+!.env.example
+
+# 💡 Si usas git hooks tipo husky
+.husky/
+
+# 📂 Otros directorios que no subas aún
+lib/
+docs/

@@ -1,0 +1,31 @@
+{
+  "name": "jquery-validaciones",
+  "version": "0.5.0",
+  "description": "Micro-librería moderna y extensible para validaciones simples con jQuery.",
+  "main": "lib/validaciones.umd.js",
+  "type": "module",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "echo \"Sin tests todavía 😅\""
+  },
+  "keywords": [
+    "jquery",
+    "form",
+    "validacion",
+    "validador",
+    "validaciones",
+    "simple",
+    "educativo",
+    "formulario"
+  ],
+  "author": "Uriel Olivares",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}

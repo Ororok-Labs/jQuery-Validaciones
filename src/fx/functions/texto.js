@@ -26,7 +26,7 @@ export function requerido(entrada) {
  */
 export function largoMinimo(entrada, min) {
   const valor = extraerValor(entrada);
-  return valor.length >= min;
+  return valor.trim().length >= min;
 }
 
 /**

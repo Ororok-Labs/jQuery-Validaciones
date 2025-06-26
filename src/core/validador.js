@@ -1,6 +1,9 @@
 import {
     getElementosPorName
 } from '../fx/utils/selectores.js';
+import {
+    extraerValor
+} from '../fx/input/input.js';
 
 /**
  * Validador.js
@@ -43,10 +46,14 @@ export class Validador {
     definirTipoSalida(tipo) {
         switch (tipo) {
             case "arreglo":
+            case "array":
             case "html":
             case "inputs":
+            case "input":
             case "consola":
+            case "console":
             case "alerta":
+            case "alert":
             case "corto-circuito":
                 return tipo;
             default:
@@ -54,89 +61,112 @@ export class Validador {
         }
     }
 
+    /**
+     * Registra un input para validación.
+     * Permite definir reglas de validación personalizadas para el input.
+     * Las reglas deben ser un arreglo de pares [función, mensaje], donde la función recibe el valor del input y retorna true si es válido o false si no lo es.
+     * @param {*} name
+     * @param {*} reglas
+     * @returns
+     */
     input(name, reglas) {
         const elementos = getElementosPorName(name);
         if (!elementos || elementos.length === 0) return this;
 
-        // Normalizar reglas
+        // Convierte la lista de reglas recibidas en un arreglo uniforme de [función, mensaje].
+        // Este validador solo acepta arrays planos: [[fn, "mensaje"], ...]
         const reglasArray = [];
-        if (typeof reglas === "function") {
-            reglas((arr) => reglasArray.push(arr));
-        } else if (Array.isArray(reglas)) {
-            reglasArray.push(...reglas);
-        } else if (typeof reglas === "object" && reglas !== null) {
-            for (const clave in reglas) {
-                const valor = reglas[clave];
-                if (Array.isArray(valor) && typeof valor[0] === "function") {
-                    reglasArray.push(valor);
+        if (Array.isArray(reglas)) {
+            reglas.forEach(regla => {
+                if (Array.isArray(regla) && typeof regla[0] === "function") {
+                    const [fn, msg, ...args] = regla;
+                    reglasArray.push([this.regla(fn, ...args), msg]);
+                } else {
+                    reglasArray.push(regla);
                 }
-            }
+            });
         }
 
-        // REGISTRA input solo si no existe
+        // Guarda el input y sus reglas de validación en la lista interna, solo si no fue registrado previamente
         const yaRegistrado = this.inputs.find(i => i.name === name);
         if (!yaRegistrado) {
             this.inputs.push({
                 name,
                 reglas: reglasArray
             });
-        }
-
-        const validarGrupo = () => {
-            this.errores = this.errores.filter(e => e.name !== name);
-
-            let valor;
-            const tipo = elementos[0].type;
-
-            if (tipo === "radio") {
-                const seleccionado = elementos.find(el => el.checked);
-                valor = seleccionado ? seleccionado.value : null;
-            } else if (tipo === "checkbox") {
-                valor = Array.from(elementos).filter(el => el.checked).map(el => el.value);
-            } else {
-                valor = elementos[0].value;
-            }
-
-            let valido = true;
-            for (const [fn, mensaje] of reglasArray) {
-                if (!fn(valor)) {
-                    valido = false;
-
-                    // Clases CSS
-                    elementos.forEach(el => {
-                        el.classList.add(this.opcionesValidacion.inputError);
-                        el.classList.remove(this.opcionesValidacion.inputExito);
-                    });
-
-                    this.mostrarMensajeEnInput(name, mensaje, this.opcionesValidacion.mensajeError);
-                    this.errores.push({
-                        name,
-                        mensaje
-                    });
-                    break;
-                }
-            }
-
-            if (valido) {
-                elementos.forEach(el => {
-                    el.classList.remove(this.opcionesValidacion.inputError);
-                    el.classList.add(this.opcionesValidacion.inputExito);
-                });
-                this.mostrarMensajeEnInput(name, "", this.opcionesValidacion.mensajeExito);
-            }
-        };
-
-        // Reactividad
-        if (this.opcionesValidacion.reactivo) {
-            elementos.forEach(el => {
-                el.addEventListener("input", validarGrupo);
-                el.addEventListener("change", validarGrupo);
-                el.addEventListener("blur", validarGrupo);
+        } else {
+            this.inputs.push({
+                name,
+                reglas: reglasArray
             });
         }
 
-        return this;
+        // Si no hay reglas, no se hace nada
+        const validarGrupo = () => {
+            this.#validarInput(name, reglasArray, elementos);
+        };
+
+        // Reactividad
+        if (this.opcionesValidacion.reactivo) { // Si la reactividad está habilitada, añade eventos de input, change y blur
+            elementos.forEach(el => { // Añade los eventos a todos los elementos del grupo
+                el.addEventListener("input", validarGrupo); //Eventos para validar al escribir
+                el.addEventListener("change", validarGrupo); //Eventos para validar al cambiar el valor
+                el.addEventListener("blur", validarGrupo); //Eventos para validar al perder el foco
+            });
+        }
+
+        return this; // Retorna la instancia del validador para encadenar métodos
     }
+
+    // Método privado que adapta funciones puras
+    regla(fn, ...args) {
+        return (valor) => {
+            return fn(valor, ...args);
+        };
+    }
+
+
+   #validarInput(name, reglas, elementos) {
+        this.errores = this.errores.filter(e => e.name !== name); // Limpiar errores previos
+
+        let valor;
+        const tipo = elementos[0].type;
+
+        if (tipo === "radio") {
+            const seleccionado = elementos.find(el => el.checked);
+            valor = seleccionado ? seleccionado.value : null;
+        } else if (tipo === "checkbox") {
+            valor = Array.from(elementos).filter(el => el.checked).map(el => el.value);
+        } else {
+            valor = elementos[0].value;
+        }
+
+        let esValido = true;
+
+        for (const [fn, mensaje] of reglas) {
+            if (!fn(valor)) {
+                elementos.forEach(el => {
+                    el.classList.add(this.opcionesValidacion.inputError);
+                    el.classList.remove(this.opcionesValidacion.inputExito);
+                });
+                this.mostrarMensajeJuntoAInput(name, mensaje, this.opcionesValidacion.mensajeError);
+                this.errores.push({ name, mensaje });
+                esValido = false;
+            }
+        }
+
+        if (esValido) {
+            elementos.forEach(el => {
+                el.classList.remove(this.opcionesValidacion.inputError);
+                el.classList.add(this.opcionesValidacion.inputExito);
+            });
+            this.mostrarMensajeJuntoAInput(name, "", this.opcionesValidacion.mensajeExito);
+            this.mostrarMensajeExitoEnInput?.(name); // por si existe
+        }
+
+        return esValido;
+    }
+
 
 
     /**
@@ -146,38 +176,42 @@ export class Validador {
     mostrarErrores() {
         switch (this.tipoSalida) {
             case "consola":
+            case "console":
                 this.errores.forEach(({
                     mensaje
-                }) => console.error(mensaje));
+                }) => console.warn(mensaje));
                 break;
 
             case "alerta":
+            case "alert":
                 alert(this.errores.map(e => e.mensaje).join("\n"));
                 break;
 
             case "html":
-                if (this.opcionesValidacion.contenedorMsg) {
+                if (this.opcionesValidacion.contenedorMsg) { // Si se ha configurado un contenedor para los mensajes de error
                     const contenedor = document.getElementById(this.opcionesValidacion.contenedorMsg);
                     if (contenedor) {
-                        contenedor.innerHTML = this.errores.map(({
+                        contenedor.innerHTML = this.errores.map(({ // Muestra los mensajes de error en el contenedor HTML
                             mensaje
                         }) => {
-                            return `<div class="${this.opcionesValidacion.mensajeError}">${mensaje}</div>`;
+                            return `<div class="${this.opcionesValidacion.mensajeError}">${mensaje}</div>`; // Crea un div para cada mensaje de error
                         }).join("");
                     }
                 }
                 break;
 
             case "inputs":
+            case "input":
                 this.errores.forEach(({
                     name,
                     mensaje
                 }) => {
-                    this.mostrarMensajeEnInput(name, mensaje, this.opcionesValidacion.mensajeError);
+                    this.mostrarMensajeJuntoAInput(name, mensaje, this.opcionesValidacion.mensajeError); // Muestra el mensaje de error al lado del input correspondiente
                 });
                 break;
 
             case "arreglo":
+            case "array":
                 return this.errores;
 
             case "corto-circuito":
@@ -196,11 +230,34 @@ export class Validador {
     /**
      * Muestra un mensaje de error en el input correspondiente.
      */
-    mostrarMensajeEnInput(name, mensaje, clase = "div-error") {
+    mostrarMensajeJuntoAInput(name, mensaje, clase = "div-error") {
+        const input = document.querySelector(`[name="${name}"]`);
+        if (!input) return;
+
+        // 1. Quitar clase de éxito y poner clase de error
+        input.classList.remove(this.opcionesValidacion.inputExito);
+        input.classList.add(this.opcionesValidacion.inputError);
+
+        // 2. Buscar el contenedor de mensaje (por ID)
         const contenedor = document.getElementById("error-" + name);
         if (!contenedor) return;
+
         contenedor.className = clase;
-        contenedor.innerHTML = mensaje;
+        contenedor.textContent = mensaje;
+    }
+
+    mostrarMensajeExitoEnInput(name) {
+        const input = document.querySelector(`[name="${name}"]`);
+        if (!input) return;
+
+        input.classList.remove(this.opcionesValidacion.inputError);
+        input.classList.add(this.opcionesValidacion.inputExito);
+
+        const contenedor = document.getElementById("error-" + name);
+        if (contenedor) {
+            contenedor.className = this.opcionesValidacion.mensajeExito;
+            contenedor.textContent = "";
+        }
     }
 
 
@@ -213,32 +270,7 @@ export class Validador {
 
         for (const input of this.inputs) {
             const elementos = getElementosPorName(input.name);
-            let valor;
-
-            const tipo = elementos[0].type;
-            if (tipo === "radio") {
-                const seleccionado = elementos.find(el => el.checked);
-                valor = seleccionado ? seleccionado.value : null;
-            } else if (tipo === "checkbox") {
-                valor = Array.from(elementos).filter(el => el.checked).map(el => el.value);
-            } else {
-                valor = elementos[0].value;
-            }
-
-            for (const [fn, mensaje] of input.reglas) {
-                if (!fn(valor)) {
-                    this.errores.push({
-                        name: input.name,
-                        mensaje
-                    });
-                    elementos.forEach(el => {
-                        el.classList.add(this.opcionesValidacion.inputError);
-                        el.classList.remove(this.opcionesValidacion.inputExito);
-                    });
-                    this.mostrarMensajeEnInput(input.name, mensaje, this.opcionesValidacion.mensajeError);
-                    break;
-                }
-            }
+            this.#validarInput(input.name, input.reglas, elementos);
         }
 
         return this.errores.length === 0;
@@ -264,22 +296,20 @@ export class Validador {
         // Elimina clases de error y limpia su contenido
         document.querySelectorAll("." + this.opcionesValidacion.inputError).forEach(el => {
             el.classList.remove(this.opcionesValidacion.inputError);
-            el.innerHTML = "";
         });
         // Elimina clases de éxito y limpia su contenido
         document.querySelectorAll("." + this.opcionesValidacion.inputExito).forEach(el => {
             el.classList.remove(this.opcionesValidacion.inputExito);
-            el.innerHTML = "";
         });
         // Elimina contenedores de error y limpia su contenido
         document.querySelectorAll("." + this.opcionesValidacion.mensajeError).forEach(el => {
             el.classList.remove(this.opcionesValidacion.mensajeError);
-            el.innerHTML = "";
+            el.textContent = "";
         });
         // Elimina contenedores de éxito (si existieran) y limpia su contenido
         document.querySelectorAll("." + this.opcionesValidacion.mensajeExito).forEach(el => {
             el.classList.remove(this.opcionesValidacion.mensajeExito);
-            el.innerHTML = "";
+            el.textContent = "";
         });
         return this;
     }

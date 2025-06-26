@@ -34,17 +34,25 @@
  *     throw new Error("Selector inválido: debe ser string o instancia de Element");
  * }
  */
-export function getElemento(selector, modoEstricto = false) {
+export function getElemento(selector) {
     if (typeof selector === "string") {
-        const el = document.querySelector(selector);
-        if (modoEstricto && !el) throw new Error("Elemento no encontrado: " + selector);
-        return el;
+        // Intenta primero como selector CSS
+        let el = document.querySelector(selector);
+        if (el) return el;
+
+        // Si no funciona como selector, intenta como name
+        if (!selector.startsWith("#") && !selector.startsWith(".")) {
+            const group = document.getElementsByName(selector);
+            if (group.length > 0) return group[0]; // Devuelve el primero (útil para radio/checkbox en reglas simples)
+        }
     }
-    if (selector instanceof Element) {
-        return selector;
-    }
-    throw new Error("Selector inválido: debe ser string o instancia de Element");
+
+    // Si ya es un nodo
+    if (selector instanceof HTMLElement) return selector;
+
+    throw new Error("No se pudo obtener el elemento: " + selector);
 }
+
 
 
 /**

@@ -10,8 +10,7 @@ import { extraerValor } from '../input/input.js';
  * Funciones.texto.requerido("Hola mundo"); // true
  */
 export function requerido(entrada) {
-  const valor = extraerValor(entrada);
-  return valor.trim().length > 0;
+  return extraerValor(entrada).trim().length > 0;
 }
 
 /**

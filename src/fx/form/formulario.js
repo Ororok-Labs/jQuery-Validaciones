@@ -114,6 +114,22 @@ export function cambiosEnTiempoReal(selector) {
 }
 
 
+
+/**
+ * Detecta cambios en todos los inputs, textareas y selects de un formulario.
+ * @param {string|HTMLElement} selector - Selector CSS o elemento del formulario.
+ * @param {function} callback - Función a ejecutar cuando un campo cambia. Recibe el elemento como argumento.
+ */
+export function detectarCambiosInputs(selector, callback) {
+    const form = getElementoPorId(selector);
+    const campos = form.querySelectorAll('input, textarea, select');
+    campos.forEach(campo => {
+        campo.addEventListener('input', () => callback(campo));
+        campo.addEventListener('change', () => callback(campo));
+    });
+}
+
+
 /**
  * Activa una advertencia al usuario si intenta salir de la página con cambios no guardados en un formulario.
  * @note

@@ -1,4 +1,4 @@
-import { getElemento } from '../utils/selectores.js';
+import { getElemento, getElementosPorName } from '../utils/selectores.js';
 
 /**
  * Convierte cualquier entrada (selector, HTMLElement, valor crudo) a string procesable.
@@ -109,6 +109,20 @@ export function checkboxMarcado(el) {
     return nodo?.checked === true;
 }
 
+
+/**
+ * Checkea si al menos un checkbox del grupo está marcado. (Checkboxs múltiple, con el mismo name)
+ * @param {*} el
+ * @returns
+ * @example
+ * Funciones.input.algunCheckboxMarcado('[name='checkbox']'); // true si al menos un checkbox del grupo está marcado
+ * Funciones.input.algunCheckboxMarcado('[name='checkbox']'); // false si ninguno del grupo está
+ */
+export function algunCheckboxMarcado(el) {
+  const grupo = getElementosPorName(el.name);
+  return Array.from(grupo).some(c => c.checked);
+}
+
 /**
  * Valida si algún radio del grupo está marcado.
  * @param {string|HTMLElement} el - Cualquier radio del grupo.
@@ -125,6 +139,11 @@ export function radioMarcado(el) {
     return document.querySelector(`input[name="${nombre}"]:checked`) !== null;
 }
 
+export function radioSeleccionado(el) {
+  const grupo = getElementosPorName(el.name);
+  return Array.from(grupo).some(r => r.checked);
+}
+
 /**
  * Valida si un select tiene valor seleccionado válido.
  * @param {string|HTMLElement} el
@@ -134,9 +153,18 @@ export function radioMarcado(el) {
  * Funciones.input.selectValido('#select'); // false si el select está vacío o no es un <select>
  * Funciones.input.selectValido(document.querySelector('#select')); // true si el select tiene un valor seleccionado
  */
-export function selectValido(el) {
-    const nodo = typeof el === 'string' ? document.querySelector(el) : el;
-    return nodo?.tagName === 'SELECT' && !!nodo.value;
+export function selectValido(el, invalido = "0") {
+  return el.value !== invalido;
+}
+
+/**
+ * Valida si un select múltiple tiene al menos una opción seleccionada.
+ * @param {*} el
+ * @returns
+ */
+export function selectMultipleSeleccionado(el) {
+  if (!el || el.tagName !== 'SELECT' || !el.multiple) return false;
+  return Array.from(el.selectedOptions).length > 0;
 }
 
 /**

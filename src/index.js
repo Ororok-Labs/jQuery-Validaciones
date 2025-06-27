@@ -74,4 +74,4 @@ export const Utilidades = {
 }
 
 // CORE
-export * as Validador from './core/validador.js';
+export * as KISS from './core/validador.js';

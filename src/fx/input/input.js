@@ -1,4 +1,8 @@
-import { getElemento, getElementosPorName } from '../utils/selectores.js';
+import {
+    getElemento,
+    getElementoPorId,
+    getElementosPorName
+} from '../utils/selectores.js';
 
 /**
  * Convierte cualquier entrada (selector, HTMLElement, valor crudo) a string procesable.
@@ -30,9 +34,9 @@ import { getElemento, getElementosPorName } from '../utils/selectores.js';
 export function extraerValor(entrada) {
     try {
         const el = getElemento(entrada);
-        return el?.val?.() ?? String(el?.value ?? '').trim();
+        return el?.val?.() ??String(el?.value ??'').trim();
     } catch {
-        return String(entrada ?? '').trim();
+        return String(entrada ??'').trim();
     }
 }
 
@@ -45,8 +49,8 @@ export function extraerValor(entrada) {
  * @example
  * const sexo = OrorokJSFunciones.Input.valorRadio("sexo"); // "masculino", "femenino" o null
  */
-export function valorRadio (name) {
-    return [...document.getElementsByName(name)].find(r => r.checked)?.value ?? null;
+export function valorRadio(name) {
+    return [...document.getElementsByName(name)].find(r => r.checked)?.value ??null;
 }
 
 /**
@@ -119,8 +123,8 @@ export function checkboxMarcado(el) {
  * Funciones.input.algunCheckboxMarcado('[name='checkbox']'); // false si ninguno del grupo está
  */
 export function algunCheckboxMarcado(el) {
-  const grupo = getElementosPorName(el.name);
-  return Array.from(grupo).some(c => c.checked);
+    const grupo = getElementosPorName(el.name);
+    return Array.from(grupo).some(c => c.checked);
 }
 
 /**
@@ -140,21 +144,23 @@ export function radioMarcado(el) {
 }
 
 export function radioSeleccionado(el) {
-  const grupo = getElementosPorName(el.name);
-  return Array.from(grupo).some(r => r.checked);
+    const grupo = getElementosPorName(el.name);
+    return Array.from(grupo).some(r => r.checked);
 }
 
 /**
- * Valida si un select tiene valor seleccionado válido.
- * @param {string|HTMLElement} el
- * @returns {boolean}
+ * Valida si un select tiene un valor válido (diferente de un valor inválido).
+ * @param {string|HTMLElement} el - Selector o elemento del select.
+ * @param {string} [invalido="0"] - Valor considerado inválido. Por defecto es "0".
+ * @returns {boolean} - True si el select tiene un valor válido, false si es inválido.
  * @example
- * Funciones.input.selectValido('#select'); // true si el select tiene un valor seleccionado
- * Funciones.input.selectValido('#select'); // false si el select está vacío o no es un <select>
- * Funciones.input.selectValido(document.querySelector('#select')); // true si el select tiene un valor seleccionado
+ *   Funciones.input.selectValido('#miSelect'); // true si el select tiene un valor diferente de "0"
+ *   Funciones.input.selectValido('#miSelect', 'noSeleccionado'); // true si el select tiene un valor diferente de "noSeleccionado"
+ *   Funciones.input.selectValido(document.querySelector('#miSelect')); // true si el select tiene un valor diferente de "0"
  */
 export function selectValido(el, invalido = "0") {
-  return el.value !== invalido;
+    const select = getElemento(el);
+    return select.value !== invalido;
 }
 
 /**
@@ -163,9 +169,80 @@ export function selectValido(el, invalido = "0") {
  * @returns
  */
 export function selectMultipleSeleccionado(el) {
-  if (!el || el.tagName !== 'SELECT' || !el.multiple) return false;
-  return Array.from(el.selectedOptions).length > 0;
+    if (!el || el.tagName !== 'SELECT' || !el.multiple) return false;
+    return Array.from(el.selectedOptions).length > 0;
 }
+
+
+
+/**
+ * Valida que si se selecciona "otro", se haya escrito texto en el campo asociado.
+ * @param {string|HTMLElement} opcionEl - Checkbox, radio o select con valor "otro".
+ * @param {string|HTMLElement} campoTextoEl - Input de texto que se debe llenar.
+ * @param {string} valorEsperado - Valor que activa la validación. Default: "otro"
+ * @returns {boolean}
+ * @example
+ * Funciones.input.opcionOtroMarcadaYTextoLleno('#opcionOtro', '#campoEspecificar'); // true si "otro" está marcado y el campo tiene texto
+ * Funciones.input.opcionOtroMarcadaYTextoLleno('#opcionOtro', '#campoEspecificar', 'especificar'); // true si "especificar" está marcado y el campo tiene texto
+ * Funciones.input.opcionOtroMarcadaYTextoLleno(document.querySelector('#opcionOtro'), document.querySelector('#campoEspecificar')); // true si "otro" está marcado y el campo tiene texto
+ */
+export function opcionOtroMarcadaYTextoLleno(_, opcionEl, campoTextoEl, valorEsperado = 'otro') {
+    const opcion = getElemento(opcionEl);
+    const campo = getElemento(campoTextoEl);
+    if (!opcion || !campo) return false;
+
+    const tipo = opcion.type;
+    const valor = opcion.value;
+
+    const estaSeleccionado = (
+        (tipo === 'checkbox' || tipo === 'radio') ? opcion.checked :
+        (opcion.tagName === 'SELECT') ? valor === valorEsperado :
+        false
+    );
+
+    if (!estaSeleccionado) return true;
+
+    return campo.value.trim().length > 0;
+}
+
+
+/**
+ * Si el campo de texto está vacío, marca como inválidos los inputs asociados (radio, checkbox, select).
+ * @param {string|HTMLElement} campoTextoEl - Input de texto a evaluar.
+ * @param {string} nameGrupo - Atributo name de los inputs a afectar.
+ * @param {string} claseError - Clase CSS a aplicar si hay vacío. Default: "is-invalid"
+ * @example
+ * Funciones.input.marcarGrupoSiTextoVacio('#campoTexto', 'grupoInputs'); // Marca inputs del grupo si el campo de texto está vacío
+ * Funciones.input.marcarGrupoSiTextoVacio('#campoTexto', 'grupoInputs', 'error-clase'); // Marca inputs del grupo si el campo de texto está vacío con clase "error-clase"
+ * Funciones.input.marcarGrupoSiTextoVacio(document.querySelector('#campoTexto'), 'grupoInputs'); // Marca inputs del grupo si el campo de texto está vacío
+ */
+export function marcarGrupoSiTextoVacio(campoTextoEl, nameGrupo, claseError = "is-invalid") {
+    const campo = getElemento(campoTextoEl);
+
+    const valorTexto = campo.value.trim();
+    const grupo = getElementosPorName(nameGrupo);
+    if (!grupo || grupo.length === 0) return;
+
+    const marcar = (valorTexto === "");
+
+    grupo.forEach(input => {
+        if (input.tagName === 'SELECT') {
+            if (marcar) {
+                input.classList.add(claseError);
+            } else {
+                input.classList.remove(claseError);
+            }
+        } else if (input.type === 'radio' || input.type === 'checkbox') {
+            if (marcar) {
+                input.classList.add(claseError);
+            } else {
+                input.classList.remove(claseError);
+            }
+        }
+    });
+}
+
+
 
 /**
  * Valida si hay al menos un archivo seleccionado.
@@ -210,7 +287,7 @@ export function archivoExtensionValida(el, extensiones) {
  */
 export function archivoTamanioMaximo(el, maxBytes) {
     const nodo = typeof el === 'string' ? document.querySelector(el) : el;
-    const archivo = nodo?.files?.[0];
+    const archivo = nodo?.files?. [0];
     return archivo ? archivo.size <= maxBytes : false;
 }
 

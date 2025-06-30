@@ -1,4 +1,7 @@
-import {getElementoPorId, normalizarSelectores} from '../utils/selectores.js';
+import {
+    getElementoPorId,
+    normalizarSelectores
+} from '../utils/selectores.js';
 
 /** @type {string} Valores iniciales del formulario para seguimiento de cambios */
 let valoresIniciales = "";
@@ -283,7 +286,7 @@ export function limpiar(selector, presionandoCheckboxs = false, valorRadioButton
  *
  * @example
  * 🛠️ Implementación interna:
- * function limpiarInputsDeContenedor(selector, presionandoCheckboxs = false, valorRadioButtonsPorDefecto = 0) {
+ * function limpiarInputsDeContenedor(selector, presionandoCheckboxs = false, valorRadioButtonsPorDefecto = false) {
  *     const contenedor = getElementoPorId(selector);
  *     contenedor.querySelectorAll("input:not([type=radio]):not([type=checkbox]), textarea").forEach(el => el.value = "");
  *     contenedor.querySelectorAll("select").forEach(select => {
@@ -311,7 +314,7 @@ export function limpiar(selector, presionandoCheckboxs = false, valorRadioButton
  * $c.find("input[type=checkbox], input[type=radio]").prop("checked", false);
  * $c.find("select").prop("selectedIndex", 0);
  */
-export function limpiarInputsDeContenedor(selector, presionandoCheckboxs = false, valorRadioButtonsPorDefecto = 0) {
+export function limpiarInputsDeContenedor(selector, presionandoCheckboxs = false, valorRadioButtonsPorDefecto = false) {
     const contenedor = getElementoPorId(selector);
     contenedor.querySelectorAll("input:not([type=radio]):not([type=checkbox]), textarea").forEach(el => el.value = "");
 
@@ -327,11 +330,13 @@ export function limpiarInputsDeContenedor(selector, presionandoCheckboxs = false
         if (r.name) radiosAgrupados.add(r.name);
     });
 
-    radiosAgrupados.forEach(name => {
-        const radios = contenedor.querySelectorAll(`input[name='${name}'][type=radio]`);
-        const match = Array.from(radios).find(r => r.value == valorRadioButtonsPorDefecto);
-        (match || radios[0])?.click();
-    });
+    if (valorRadioButtonsPorDefecto != false) {
+        radiosAgrupados.forEach(name => {
+            const radios = contenedor.querySelectorAll(`input[name='${name}'][type=radio]`);
+            const match = Array.from(radios).find(r => r.value == valorRadioButtonsPorDefecto);
+            (match || radios[0])?.click();
+        });
+    }
 
     contenedor.querySelectorAll("input[type=checkbox]").forEach(chk => {
         if (presionandoCheckboxs && chk.checked) chk.click();
@@ -436,4 +441,34 @@ export function requerirInputs(selectores) {
  */
 export function desrequerirInputs(selectores) {
     normalizarSelectores(selectores).forEach(el => el.required = false);
+}
+
+/**
+ * Quita clases de los inputs de un formulario y agrega otras nuevas.
+ * @param {string} selector Selector CSS del formulario o elemento.
+ * @param {array} clasesAEliminar Clases a eliminar de los inputs.
+ * @param {array} clasesAAgregar Clases a agregar a los inputs. //Opcional
+ * @param {string} prefijoError Prefijo del id de todos los elementos que muestran mensajes, para ocultarlos. //Opcional
+ * @example
+ * resetearClasesYErrores("#formulario", ["error", "invalid"], ["nueva-clase"]);
+ * resetearClasesYErrores("formulario", ["error"], ["valid", "highlight"]);
+ * resetearClasesYErrores(document.getElementById("formulario"), ["error", "invalid"], "error-");
+ */
+export function resetearClasesYErrores(selector, clasesAEliminar = [], clasesAAgregar = [], prefijoError = "error-") {
+    const elemento = getElementoPorId(selector);
+    const inputs = elemento.querySelectorAll('input, textarea, select');
+    const elementosError = document.querySelectorAll(`[id^="${prefijoError}"]`);
+
+    // Eliminar clases especificadas
+    inputs.forEach(campo => {
+        // Eliminar clases especificadas
+        clasesAEliminar.forEach(clase => campo.classList.remove(clase));
+        // Agregar nuevas clases
+        clasesAAgregar.forEach(clase => campo.classList.add(clase));
+    });
+
+    elementosError.forEach(selector => {
+        selector.innerHTML = ""; // Limpia el contenido HTML de los elementos de error
+        selector.display = "none"; // Oculta los elementos de error
+    });
 }

@@ -34,9 +34,9 @@ import {
 export function extraerValor(entrada) {
     try {
         const el = getElemento(entrada);
-        return el?.val?.() ??String(el?.value ??'').trim();
+        return el?.val?.() ?? String(el?.value ?? '').trim();
     } catch {
-        return String(entrada ??'').trim();
+        return String(entrada ?? '').trim();
     }
 }
 
@@ -50,7 +50,7 @@ export function extraerValor(entrada) {
  * const sexo = OrorokJSFunciones.Input.valorRadio("sexo"); // "masculino", "femenino" o null
  */
 export function valorRadio(name) {
-    return [...document.getElementsByName(name)].find(r => r.checked)?.value ??null;
+    return [...document.getElementsByName(name)].find(r => r.checked)?.value ?? null;
 }
 
 /**
@@ -209,37 +209,81 @@ export function opcionOtroMarcadaYTextoLleno(_, opcionEl, campoTextoEl, valorEsp
 /**
  * Si el campo de texto está vacío, marca como inválidos los inputs asociados (radio, checkbox, select).
  * @param {string|HTMLElement} campoTextoEl - Input de texto a evaluar.
- * @param {string} nameGrupo - Atributo name de los inputs a afectar.
+ * @param {string|HTMLElement} opcionVinculado - Atributo id de los inputs a afectar.
  * @param {string} claseError - Clase CSS a aplicar si hay vacío. Default: "is-invalid"
+ * @param {string} claseExito - Clase CSS a aplicar si hay contenido. Default: "is-valid"
  * @example
- * Funciones.input.marcarGrupoSiTextoVacio('#campoTexto', 'grupoInputs'); // Marca inputs del grupo si el campo de texto está vacío
- * Funciones.input.marcarGrupoSiTextoVacio('#campoTexto', 'grupoInputs', 'error-clase'); // Marca inputs del grupo si el campo de texto está vacío con clase "error-clase"
- * Funciones.input.marcarGrupoSiTextoVacio(document.querySelector('#campoTexto'), 'grupoInputs'); // Marca inputs del grupo si el campo de texto está vacío
+ * Funciones.input.marcarGrupoSiTextoVacio('#campoTexto', '#opcionVinculado'); // Marca inputs del grupo si el campo de texto está vacío
+ * Funciones.input.marcarGrupoSiTextoVacio('#campoTexto', 'opcionVinculado', 'error-clase'); // Marca inputs del grupo si el campo de texto está vacío con clase "error-clase"
+ * Funciones.input.marcarGrupoSiTextoVacio(document.querySelector('#campoTexto'), 'opcionVinculado'); // Marca inputs del grupo si el campo de texto está vacío
  */
-export function marcarGrupoSiTextoVacio(campoTextoEl, nameGrupo, claseError = "is-invalid") {
+export function marcarGrupoSiTextoVacio(campoTextoEl, opcionVinculado, claseError = "is-invalid", claseExito = "is-valid") {
     const campo = getElemento(campoTextoEl);
-
+    const opcionVinculada = getElementoPorId(opcionVinculado);
+    const grupo = getElementosPorName(opcionVinculada.getAttribute("name"));
     const valorTexto = campo.value.trim();
-    const grupo = getElementosPorName(nameGrupo);
+    let marcar = false;
+
     if (!grupo || grupo.length === 0) return;
 
-    const marcar = (valorTexto === "");
+    if (inputDeOpcionMarcado(opcionVinculada) && valorTexto === "") {
+        marcar = true;
+    }else if(inputDeOpcionMarcado(opcionVinculada) && valorTexto !== ""){
+        marcar = false;
+    }else if(algunaOpcionDeGrupoMarcada(grupo)){
+        marcar = false;
+    }else{
+        marcar = true;
+    }
 
     grupo.forEach(input => {
         if (input.tagName === 'SELECT') {
             if (marcar) {
                 input.classList.add(claseError);
+                input.classList.remove(claseExito);
             } else {
                 input.classList.remove(claseError);
+                input.classList.add(claseExito);
             }
         } else if (input.type === 'radio' || input.type === 'checkbox') {
             if (marcar) {
                 input.classList.add(claseError);
+                input.classList.remove(claseExito);
             } else {
                 input.classList.remove(claseError);
+                input.classList.add(claseExito);
             }
         }
     });
+    if (marcar) {
+        campo.classList.add(claseError);
+        return false;
+    } else {
+        campo.classList.remove(claseError);
+        return true;
+    }
+}
+
+export function inputDeOpcionMarcado(input) {
+    if (
+        ((input.type === 'checkbox' || input.type === 'radio') && input.checked) ||
+        ((input.tagName === 'SELECT' && input.multiple) ?
+            (Array.from(input.selectedOptions).length > 0) :
+            (input.tagName === 'SELECT' && input.selectedIndex > -1 && input.value !== ""))
+    ) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+export function algunaOpcionDeGrupoMarcada(grupo) {
+    return Array.from(grupo).some(input =>
+        (input.type === 'checkbox' || input.type === 'radio') ? input.checked :
+        (input.tagName === 'SELECT' && input.multiple) ? Array.from(input.selectedOptions).length > 0 :
+        (input.tagName === 'SELECT') ? input.selectedIndex > -1 && input.value !== "" :
+        false
+    );
 }
 
 

@@ -1,4 +1,5 @@
 import {
+    getElementoPorId,
     getElementosPorName
 } from '../fx/utils/selectores.js';
 import * as Formulario from '../fx/form/formulario.js';
@@ -31,7 +32,6 @@ export class Validador {
             //En caso de mostrar errores en inputs, se usa "error-{name del input}" como id del contenedor (Ej: span al lado del input).
             //En caso de mostrar errores en HTML, se usa el id del contenedor (Ej: ventana modal con mensajes).
             contenedorMsg: opcionesValidacion.contenedorMsg,
-            prefijoContenedorMsg: opcionesValidacion.prefijoContenedorMsg || "error-", //Prefijo que se le dará al id del contenedor de mensajes de error (Ej: "error-{name del input}").
             cssMensajeError: opcionesValidacion.cssMensajeError || "msg-error", //Clase css que se le dará al contenedor de error.
             cssMensajeExito: opcionesValidacion.cssMensajeExito || "msg-exito", //Clase css que se le dará al contenedor de éxito.
 
@@ -119,9 +119,13 @@ export class Validador {
         // Si no hay reglas, no se hace nada
         const validarGrupo = () => {
             if (this.tipoSalida === "input" || this.tipoSalida === "inputs") {
-                this.#validarInput(name, reglasArray, elementos, { modo: "input" });
+                this.#validarInput(name, reglasArray, elementos, {
+                    modo: "input"
+                });
             } else {
-                this.#validarInput(name, reglasArray, elementos, { modo: "otros" });
+                this.#validarInput(name, reglasArray, elementos, {
+                    modo: "otros"
+                });
             }
         };
 
@@ -143,7 +147,10 @@ export class Validador {
     }
 
 
-    #validarInput(name, reglas, elementos, { modo = "otros", claseError = this.opcionesValidacion.cssMensajeError } = {}) {
+    #validarInput(name, reglas, elementos, {
+        modo = "otros",
+        claseError = this.opcionesValidacion.cssMensajeError
+    } = {}) {
         this.errores = this.errores.filter(e => e.name !== name);
 
         const valor = elementos[0];
@@ -164,9 +171,16 @@ export class Validador {
 
             const mensajeFinal = (modo === "input") ? erroresDeCampo.map(msg => `<div>${msg}</div>`).join("") : erroresDeCampo[0];
 
-            this.#actualizarInputEstado(name, { mensaje: mensajeFinal, esError: true, claseError });
+            this.#actualizarInputEstado(name, {
+                mensaje: mensajeFinal,
+                esError: true,
+                claseError
+            });
 
-            this.errores.push({ name, mensaje: mensajeFinal });
+            this.errores.push({
+                name,
+                mensaje: mensajeFinal
+            });
             return false;
         }
 
@@ -190,7 +204,9 @@ export class Validador {
         switch (this.tipoSalida) {
             case "consola":
             case "console":
-                this.errores.forEach(({mensaje}) => console.warn(mensaje));
+                this.errores.forEach(({
+                    mensaje
+                }) => console.warn(mensaje));
                 break;
 
             case "alerta":
@@ -213,8 +229,15 @@ export class Validador {
 
             case "inputs":
             case "input":
-                this.errores.forEach(({name, mensaje}) => {
-                    this.#actualizarInputEstado(name, { mensaje: mensaje, esError: true, claseError: this.opcionesValidacion.cssMensajeError });
+                this.errores.forEach(({
+                    name,
+                    mensaje
+                }) => {
+                    this.#actualizarInputEstado(name, {
+                        mensaje: mensaje,
+                        esError: true,
+                        claseError: this.opcionesValidacion.cssMensajeError
+                    });
                 });
                 break;
 
@@ -229,31 +252,70 @@ export class Validador {
                 break;
 
             default:
-                this.errores.forEach(({mensaje}) => console.error(mensaje));
+                this.errores.forEach(({
+                    mensaje
+                }) => console.error(mensaje));
         }
     }
 
 
-    #actualizarInputEstado(name, { mensaje = "", esError = false, claseError = "div-error" } = {}) {
-        const input = document.querySelector(`[name="${name}"]`);
-        if (!input) return;
+    #actualizarInputEstado(name, {
+        mensaje = "",
+        esError = false,
+        claseError = "div-error"
+    } = {}) {
+        //Puede llegar un input solo o un grupo de inputs (radio, checkbox, select)
+        const inputs = document.querySelector(`[name="${name}"]`);
+        if (!inputs) return; //Debe tener name para poder actualizar el estado
+        const grupo = document.querySelectorAll(`[name="${name}"]`);
 
-        // Quitar ambas clases antes de agregar la que corresponde
-        input.classList.remove(this.opcionesValidacion.cssInputError, this.opcionesValidacion.cssInputExito);
-        input.classList.add(esError ? this.opcionesValidacion.cssInputError : this.opcionesValidacion.cssInputExito);
+        let opcionSeleccionada = null; //
+        let inputVinculo = false; // Input vinculado al seleccionado, si existe (caso de innput texto vinculado a un radio o checkbox)
+        let evitarValidar = false;
 
-        const contenedor = document.getElementById("error-" + name);
-        if (!contenedor) return;
-
-        if (esError) {
-            contenedor.className = claseError;
-            contenedor.innerHTML = mensaje; //0(this.tipoSalida === "input" || this.tipoSalida === "inputs") === true ? mensaje : "";
-            contenedor.style.display = "block";
-        } else {
-            contenedor.className = this.opcionesValidacion.cssMensajeExito;
-            contenedor.innerHTML = "";
-            contenedor.style.display = "none";
+        if (inputs.type === "radio" || inputs.type === "checkbox") {
+            // Si es un grupo, obtener el seleccionado
+            grupo.forEach(el => {
+                if (el.checked) opcionSeleccionada = el;
+            });
         }
+
+        if (opcionSeleccionada !== null) {
+            const inputVinculado = opcionSeleccionada.getAttribute("data-vinculo");
+            inputVinculo = inputVinculado ? document.getElementById(inputVinculado) : false;
+        }
+
+        if (!opcionSeleccionada) { //Caso input normal (no radio ni checkbox)
+            inputs.classList.remove(this.opcionesValidacion.cssInputError, this.opcionesValidacion.cssInputExito);
+            inputs.classList.add(esError ? this.opcionesValidacion.cssInputError : this.opcionesValidacion.cssInputExito);
+
+            let padre = inputs.getAttribute("data-padre");
+            if (padre !== null && !getElementoPorId(padre).checked) evitarValidar = true; // Si el input no está seleccionado, no se muestra error
+        } else if (opcionSeleccionada && !inputVinculo) { //Caso radio o checkbox sin input vinculado
+            inputs.classList.remove(this.opcionesValidacion.cssInputError, this.opcionesValidacion.cssInputExito);
+            inputs.classList.add(esError ? this.opcionesValidacion.cssInputError : this.opcionesValidacion.cssInputExito);
+        } else if (opcionSeleccionada && (inputVinculo instanceof HTMLInputElement || inputVinculo instanceof HTMLTextAreaElement)) { // Caso input vinculado con radio o checkbox seleccionado
+            inputVinculo.classList.remove(this.opcionesValidacion.cssInputError, this.opcionesValidacion.cssInputExito);
+            grupo.forEach(el => {
+                el.classList.remove(this.opcionesValidacion.cssInputError, this.opcionesValidacion.cssInputExito);
+            });
+        }
+
+        let contenedorError = document.getElementById(inputs.getAttribute("data-error"));
+        if (!contenedorError) contenedorError = inputs;
+
+        if (!evitarValidar) {
+            if (esError) {
+                contenedorError.className = claseError;
+                contenedorError.innerHTML = mensaje;
+                contenedorError.style.display = "block";
+            } else {
+                contenedorError.className = this.opcionesValidacion.cssMensajeExito;
+                contenedorError.innerHTML = "";
+                contenedorError.style.display = "none";
+            }
+        }
+
     }
 
 
@@ -267,8 +329,12 @@ export class Validador {
         for (const input of this.inputs) {
             const elementos = getElementosPorName(input.name);
 
-            if(this.tipoSalida === "input" || this.tipoSalida === "inputs") this.#validarInput(input.name, input.reglas, elementos, { modo: "input" });
-            else this.#validarInput(input.name, input.reglas, elementos, { modo: "otros" });
+            if (this.tipoSalida === "input" || this.tipoSalida === "inputs") this.#validarInput(input.name, input.reglas, elementos, {
+                modo: "input"
+            });
+            else this.#validarInput(input.name, input.reglas, elementos, {
+                modo: "otros"
+            });
         }
 
         return this.errores.length === 0;
